@@ -1,0 +1,3 @@
+import './globals.css';import Nav from '@/components/Nav';import ThemeProvider from '@/components/ThemeProvider';
+export const metadata={title:'VentOut AI — Private emotional release',description:'A private voice-first space to vent, calm down, and regain control.'};
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><ThemeProvider><Nav/><main>{children}</main><footer className="mx-auto max-w-6xl px-4 py-10 text-center text-sm text-slate-500">VentOut AI is not a replacement for professional or emergency care.</footer></ThemeProvider></body></html>}

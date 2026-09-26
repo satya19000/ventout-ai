@@ -1,3 +1,88 @@
-import Link from 'next/link';import {Mic,Hammer,MessageSquareWarning,Flame,BarChart3,Settings,Smile} from 'lucide-react';
-const tools=[['/vent',Mic,'Voice Venting','Speak or type privately'],['/rage-room',Hammer,'Rage Room','Break virtual objects safely'],['/abuse-wall',MessageSquareWarning,'Abuse Wall','Words disappear automatically'],['/angry-letter',Flame,'Angry Letter','Write it, burn it, release it'],['/mood',BarChart3,'Mood Tracker','Check before and after'],['/vent?mode=roast',Smile,'Safe Roast','Light humour, never cruelty'],['/settings',Settings,'Settings','Language, voice and privacy']];
-export default function Dashboard(){return <div className="mx-auto max-w-6xl px-4 py-10"><h1 className="text-4xl font-black">How do you want to release it?</h1><p className="mt-2 text-slate-600 dark:text-slate-300">Choose a private tool. You stay in control.</p><div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{tools.map(([href,I,title,desc]:any)=><Link href={href} className="card transition hover:-translate-y-1" key={title}><I className="text-blue-600" size={30}/><h2 className="mt-4 text-xl font-bold">{title}</h2><p className="mt-2 text-slate-600 dark:text-slate-300">{desc}</p></Link>)}</div></div>}
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
+import {
+  Mic,
+  Hammer,
+  MessageSquareWarning,
+  Flame,
+  BarChart3,
+  Settings,
+  Smile,
+} from 'lucide-react';
+import { auth, firebaseConfigured } from '@/lib/firebase';
+
+const tools = [
+  ['/vent', Mic, 'Voice Venting', 'Speak or type privately'],
+  ['/rage-room', Hammer, 'Rage Room', 'Break virtual objects safely'],
+  ['/abuse-wall', MessageSquareWarning, 'Abuse Wall', 'Words disappear automatically'],
+  ['/angry-letter', Flame, 'Angry Letter', 'Write it, burn it, release it'],
+  ['/mood', BarChart3, 'Mood Tracker', 'Check before and after'],
+  ['/vent?mode=roast', Smile, 'Safe Roast', 'Light humour, never cruelty'],
+  ['/settings', Settings, 'Settings', 'Language, voice and privacy'],
+];
+
+export default function Dashboard() {
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!firebaseConfigured || !auth) {
+      router.replace('/auth');
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.replace('/auth');
+      } else {
+        setReady(true);
+      }
+    });
+
+    return unsubscribe;
+  }, [router]);
+
+  if (!ready) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-10">
+        Checking your private account...
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <h1 className="text-4xl font-black">
+        How do you want to release it?
+      </h1>
+
+      <p className="mt-2 text-slate-600 dark:text-slate-300">
+        Choose a private tool. You stay in control.
+      </p>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {tools.map(([href, Icon, title, desc]: any) => (
+          <Link
+            href={href}
+            className="card transition hover:-translate-y-1"
+            key={title}
+          >
+            <Icon className="text-blue-600" size={30} />
+
+            <h2 className="mt-4 text-xl font-bold">
+              {title}
+            </h2>
+
+            <p className="mt-2 text-slate-600 dark:text-slate-300">
+              {desc}
+            </p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}

@@ -1,2 +1,115 @@
-import Link from 'next/link';import {Mic,ShieldCheck,Languages,Sparkles,Flame,BarChart3} from 'lucide-react';
-export default function Home(){return <div className="mx-auto max-w-6xl px-4 py-14"><section className="grid items-center gap-10 lg:grid-cols-2"><div><span className="rounded-full bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700">Private • Voice-first • Multilingual</span><h1 className="mt-6 text-5xl font-black leading-tight md:text-7xl">Let it out.<br/><span className="text-blue-600">Keep control.</span></h1><p className="mt-6 max-w-xl text-lg text-slate-600 dark:text-slate-300">Speak, type, shout, or write privately. VentOut listens without judging, then helps you move from emotional overload to the next safe step.</p><div className="mt-8 flex flex-wrap gap-3"><Link href="/vent" className="btn-primary"><Mic size={20}/>Start venting</Link><Link href="/dashboard" className="btn-secondary">Explore tools</Link></div><p className="mt-4 text-xs text-slate-500">Raw vent transcripts are not saved by default.</p></div><div className="card relative overflow-hidden p-8"><div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-blue-100 blur-2xl"/><div className="relative mx-auto flex h-64 w-64 animate-float items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-2xl"><Mic size={86} className="text-white"/></div><div className="mt-8 rounded-2xl bg-blue-50 p-4 text-center dark:bg-blue-950">“I’m listening. Say what you need to say.”</div></div></section><section className="mt-20 grid gap-4 md:grid-cols-3">{[[ShieldCheck,'Private by design','No raw vent storage by default.'],[Languages,'23 languages','Voice where supported, text fallback everywhere.'],[Sparkles,'Gentle guidance','Validation first, solutions only when you are ready.'],[Flame,'Angry letter','Write it, burn it, delete it.'],[BarChart3,'Mood trends','Track progress without storing sensitive transcripts.'],[Mic,'Free browser voice','Uses device speech recognition and synthesis.']].map(([I,t,d]:any)=><div className="card" key={t}><I className="text-blue-600"/><h3 className="mt-4 text-xl font-bold">{t}</h3><p className="mt-2 text-slate-600 dark:text-slate-300">{d}</p></div>)}</section></div>}
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { auth, db, firebaseConfigured } from '@/lib/firebase';
+
+export default function Auth() {
+  const router = useRouter();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit(signUp: boolean) {
+    if (!firebaseConfigured || !auth) {
+      setMsg(
+        'Firebase is not configured. Add the Firebase environment variables first.'
+      );
+      return;
+    }
+
+    setBusy(true);
+    setMsg('');
+
+    try {
+      const result = signUp
+        ? await createUserWithEmailAndPassword(auth, email, password)
+        : await signInWithEmailAndPassword(auth, email, password);
+
+      if (signUp && db) {
+        await setDoc(
+          doc(db, 'profiles', result.user.uid),
+          {
+            email: result.user.email,
+            createdAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
+      router.replace('/dashboard');
+    } catch (error) {
+      setMsg(
+        error instanceof Error
+          ? error.message
+          : 'Authentication failed.'
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-md px-4 py-14">
+      <div className="card">
+        <h1 className="text-3xl font-black">
+          Private account
+        </h1>
+
+        <p className="mt-2 text-sm text-slate-500">
+          Sign in to securely access your VentOut dashboard and saved mood
+          history.
+        </p>
+
+        <input
+          className="input mt-6"
+          type="email"
+          autoComplete="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          className="input mt-3"
+          type="password"
+          autoComplete="current-password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <button
+            className="btn-primary"
+            disabled={busy}
+            onClick={() => submit(false)}
+          >
+            {busy ? 'Please wait...' : 'Sign in'}
+          </button>
+
+          <button
+            className="btn-secondary"
+            disabled={busy}
+            onClick={() => submit(true)}
+          >
+            {busy ? 'Please wait...' : 'Sign up'}
+          </button>
+        </div>
+
+        {msg && (
+          <p className="mt-4 text-sm">
+            {msg}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

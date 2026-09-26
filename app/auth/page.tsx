@@ -1,6 +1,92 @@
 'use client';
-import {useState} from 'react';
-import {createUserWithEmailAndPassword, signInWithEmailAndPassword} from 'firebase/auth';
-import {doc, serverTimestamp, setDoc} from 'firebase/firestore';
-import {auth,db,firebaseConfigured} from '@/lib/firebase';
-export default function Auth(){const [email,setEmail]=useState('');const [password,setPassword]=useState('');const [msg,setMsg]=useState('');async function submit(signUp:boolean){if(!firebaseConfigured||!auth){setMsg('Firebase is not configured. Add the Firebase environment variables first.');return}try{const r=signUp?await createUserWithEmailAndPassword(auth,email,password):await signInWithEmailAndPassword(auth,email,password);if(signUp&&db)await setDoc(doc(db,'profiles',r.user.uid),{email:r.user.email,createdAt:serverTimestamp()},{merge:true});setMsg(signUp?'Account created successfully.':'Signed in successfully.')}catch(e){setMsg(e instanceof Error?e.message:'Authentication failed.')}}return <div className="mx-auto max-w-md px-4 py-14"><div className="card"><h1 className="text-3xl font-black">Private account</h1><p className="mt-2 text-sm text-slate-500">Use an account only if you want cross-device mood history.</p><input className="input mt-6" type="email" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/><input className="input mt-3" type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)}/><div className="mt-4 grid grid-cols-2 gap-3"><button className="btn-primary" onClick={()=>submit(false)}>Sign in</button><button className="btn-secondary" onClick={()=>submit(true)}>Sign up</button></div>{msg&&<p className="mt-4 text-sm">{msg}</p>}</div></div>}
+
+import Link from 'next/link';
+import { HeartHandshake, Moon, Sun, LogIn, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+
+export default function Nav() {
+  const [dark, setDark] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') === 'dark';
+    setDark(savedTheme);
+    document.documentElement.classList.toggle('dark', savedTheme);
+
+    if (!auth) return;
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  function toggle() {
+    const next = !dark;
+    setDark(next);
+
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+  }
+
+  async function logout() {
+    if (auth) {
+      await signOut(auth);
+    }
+
+    window.location.href = '/auth';
+  }
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-white/60 bg-white/75 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/75">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+
+        <Link href="/" className="flex items-center gap-2 font-bold">
+          <span className="rounded-xl bg-blue-600 p-2 text-white">
+            <HeartHandshake size={20} />
+          </span>
+          VentOut AI
+        </Link>
+
+        <nav className="hidden items-center gap-5 text-sm md:flex">
+          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/vent">Vent</Link>
+          <Link href="/mood">Mood</Link>
+          <Link href="/privacy">Privacy</Link>
+
+          {user ? (
+            <button
+              type="button"
+              onClick={logout}
+              className="flex items-center gap-1 font-semibold"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
+          ) : (
+            <Link
+              href="/auth"
+              className="flex items-center gap-1 font-semibold text-blue-600"
+            >
+              <LogIn size={16} />
+              Sign in
+            </Link>
+          )}
+        </nav>
+
+        <button
+          type="button"
+          aria-label="Toggle theme"
+          className="btn-secondary !p-2.5"
+          onClick={toggle}
+        >
+          {dark ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+
+      </div>
+    </header>
+  );
+}
